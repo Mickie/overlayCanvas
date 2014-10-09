@@ -1,0 +1,885 @@
+
+<!--  this is based on phpsmart template engine framework -->
+<{$baseURL='/answer/img/user/edit/'}>
+<!DOCTYPE html>
+<html>
+<head>
+    <{include file='user/common_tpl/head.tpl' title='审核编辑'}>
+    <link rel='stylesheet' href="/answer/css/user/edit1.css">
+    <script type="text/javascript" src="/answer/js/user/jquery-rotate.js"></script>
+    <script type="text/javascript" src="/answer/js/user/canvas.js"></script>
+    <style>
+        #loading img{
+            position:absolute;
+            top:300px;
+            left:650px;
+        }
+    </style>
+    <script>
+        var r = 0;
+        var buttonId;
+        var AlloyImageObj;
+        var oImgWidth;
+        var oImgHeight;
+        var initWidth;
+        var initHeight;
+        var tempWidth;
+        var tempHeight;
+        var imageChangeRatio;
+        var b64;
+        var imgRotateDeg=0;
+        var sizeChange=1;
+        var imgRevised=0;
+        var timer;
+        var lock;
+        $(function(){
+            $(":button").attr('disabled','disabled');
+            //setup HotKeys
+            $(document).bind('keydown',function(){
+                var char=window.event.keyCode;
+                if(char==70){ // 'F'键，旋转
+                    a6();
+                }
+                if(char==38){ // '^'键，reduce height
+                    if($('#continue').css('display')=='block'){
+                        window.event.preventDefault();
+                        changeSelectHeight(-10);
+                    }
+                }
+                if(char==40){ // 'V'键，increase height
+                    if($('#continue').css('display')=='block'){
+                        window.event.preventDefault();
+                        changeSelectHeight(10);
+                    }
+                }
+                if(char==13 || char==192){ //Enter，~ 键确认剪裁
+                    if($('#continue').css('display')=='block'){
+                        a11();
+                    }
+                }
+                if(char==27){ //Esc，取消剪裁
+                    if($('#cancel').css('display')=='block'){
+                        a12();
+                    }
+                }
+                if(char==37){ //reduce width
+                    if($('#continue').css('display')=='block'){
+                        window.event.preventDefault();
+                        changeSelectWidth(-10);
+                    }
+                }
+                if(char==39){ //increase width
+                    if($('#continue').css('display')=='block'){
+                        window.event.preventDefault();
+                        changeSelectWidth(10);
+                    }
+                }
+                if(char==84){ //T
+                    $("#other").trigger('click');
+                }
+                if(char==49){ //1
+                    $("#shuxue").trigger('click');
+                }
+                if(char==50){ //2
+                    $("#wuli").trigger('click');
+                }
+                if(char==51){ //3
+                    $("#huaxue").trigger('click');
+                }
+                if(char==52){ //4
+                    $("#yingyu").trigger('click');
+                }
+                if(char==53){//5
+                    $("#yuwen").trigger('click');
+                }
+                if(char==81){ //Q
+                    $("#shengwu").trigger('click');
+                }
+                if(char==87){// W
+                    $("#zhengzhi").trigger('click');
+                }
+                if(char==69){ //E
+                    $("#lishi").trigger('click');
+                }
+                if(char==82){ //R
+                    $("#dili").trigger('click');
+                }
+            })
+            //bind mousewheel event;
+            $('body').mousewheel(function(event, delta){
+                if(delta>0){//向上滚动,scaleBig
+                    if($('#continue').css('display')=='block'){
+                        event.preventDefault();
+                        overlayCanvas.scaleBigRect(3,3);
+                    }
+                }
+                if(delta<0){//向下滚,scaleSmall
+                    if($('#continue').css('display')=='block'){
+                        event.preventDefault();
+                        overlayCanvas.scaleSmallRect(3,3,20,10);
+                    }
+                }
+                changeBtnPosition();
+            });
+
+            $("#invalid_7_div").tooltip({
+                position: { my: "right-15 top", at: "left top" },
+                open:function(event,ui){
+                    ui.tooltip.animate('fast');
+                }
+            });
+            $("#invalid_9_div").tooltip({
+                position: { my: "left+15 top", at: "right top" },
+                open:function(event,ui){
+                    ui.tooltip.animate('fast');
+                }
+            });
+            $("#invalid_6_div").tooltip({
+                open:function(event,ui){
+                    ui.tooltip.animate('fast');
+                }
+            });
+            $("#invalid_8_div").tooltip({
+                open:function(event,ui){
+                    ui.tooltip.animate('fast');
+                }
+            });
+            lock = 0;
+            showPersonalInfo();
+            //$(":button").attr('disabled','disabled');
+            timer = setInterval(startRequest,5000);
+            startRequest();
+            getChatlist();
+            setInterval(getChatlist,5000);
+
+            //change style when type of data selected
+            $(".clickStyle").click(function(){
+                $(".clickStyle").each(function(){
+                    $(this).css('background','url(<{$baseURL}>2_interface_41.jpg)');
+                });
+                $(this).css('background','url(<{$baseURL}>2_interface_39.png)');
+            });
+            //popUp dialogs
+//    $('.type').click(function(){
+//        $("#popDialog").dialog({
+//            height:300
+//        });
+
+            $("#invalid_8").click(function(){
+                if(confirm("您已选择 '其他' 类型 ")){
+                    $(":button").attr('disabled','disabled');
+                    var text = "童鞋~恭喜你获得加入学霸君QQ群的机会，我们一起来探讨作业的意义吧！QQ群号：170228454";
+                    $.post("/itf/chatClose",{ text:text,operation:"8"},function(){
+                        $('.clickStyle').each(function(){
+                            $(this).css('background','url(<{$baseURL}>2_interface_41.jpg)');
+                        });
+                        $("#canvas").remove();
+                        $("#img_description").text("");
+                        $("#openid").val("");
+                        $("#qtag").val("0");
+                        $("#uploadPreview").attr('src','');
+                        timer = setInterval(startRequest,5000);
+                        startRequest();
+                    });
+                }
+            });
+            $("#invalid_9").click(function(){
+                if(confirm("您已选择 '不可识别' 类型 ")){
+                    $(":button").attr('disabled','disabled');
+                    var text = "童鞋~模糊的、手写的题目学霸君是无法识别的，请努力拍出好照片吧。";
+                    $.post("/itf/chatClose",{ text:text,operation:"9"},function(){
+                        $('.clickStyle').each(function(){
+                            $(this).css('background','url(<{$baseURL}>2_interface_41.jpg)');
+                        });
+                        $("#canvas").remove();
+                        $("#img_description").text("");
+                        $("#openid").val("");
+                        $("#qtag").val("0");
+                        $("#uploadPreview").attr('src','');
+                        timer = setInterval(startRequest,5000);
+                        startRequest();
+                    });
+                }
+            });
+            $("#invalid_6").click(function(){
+                if(confirm("您已选择 '开放性题' 类型 ")){
+                    $(":button").attr('disabled','disabled');
+                    var text = "童鞋~作文、翻译、论述神马的是思考的结晶哦~学霸君相信你可以做到的！";
+                    $.post("/itf/chatClose",{ text:text,operation:"6"},function(){
+                        $('.clickStyle').each(function(){
+                            $(this).css('background','url(<{$baseURL}>2_interface_41.jpg)');
+                        });
+                        $("#canvas").remove();
+                        $("#img_description").text("");
+                        $("#openid").val("");
+                        $("#qtag").val("0");
+                        $("#uploadPreview").attr('src','');
+                        timer = setInterval(startRequest,5000);
+                        startRequest();
+                    });
+                }
+            });
+            $("#invalid_7").click(function(){
+                if(confirm("您已选择 '非标准' 类型 ")){
+                    $(":button").attr('disabled','disabled');
+                    var text = "童鞋~学霸君一次只能搜索一道题目噢！友情提醒：拍完照后请框选出完整的题！";
+                    $.post("/itf/chatClose",{ text:text,operation:"7"},function(){
+                        $('.clickStyle').each(function(){
+                            $(this).css('background','url(<{$baseURL}>2_interface_41.jpg)');
+                        });
+                        $("#canvas").remove();
+                        $("#img_description").text("");
+                        $("#openid").val("");
+                        $("#qtag").val("0");
+                        $("#uploadPreview").attr('src','');
+                        timer = setInterval(startRequest,5000);
+                        startRequest();
+                    });
+                }
+            });
+            $("#solve").click(function(){
+                if($("#qtag").val()=="0"){
+                    alert("请选择科目");
+                }else{
+                    a12();
+                    $(":button").attr('disabled','disabled');
+                    var tagId = $("#qtag").val();
+                    if(imgRotateDeg==0 && imgRevised==0){
+                        $.post("/itf/sendToSearchList",{tagId:tagId},function(){
+                            $('.clickStyle').each(function(){
+                                $(this).css('background','url(<{$baseURL}>2_interface_41.jpg)');
+                            });
+                            $("#canvas").remove();
+                            $("#img_description").text("");
+                            $("#openid").val("");
+                            $("#qtag").val("0");
+                            $("#uploadPreview").attr('src','');
+                            timer = setInterval(startRequest,5000);
+                            startRequest();
+                        });
+                    }
+                    else{
+                        var canvas=document.getElementById('canvas');
+                        b64=canvas.toDataURL();
+                        b64 = b64.substring(22);
+                        var url='/itf/postImg';
+                        $.ajax({
+                            type:'POST',
+                            url:url,
+                            data:{data:b64,r:imgRotateDeg,tagId:tagId},
+                            beforeSend:function(){
+                                $( "#loading" ).show().html("<img src='/answer/img/user/solve/loading_tab.gif'>");
+                            },
+                            success:function(data){
+                                if(data=='OK'){
+                                    $( "#loading").empty().hide();
+                                    $('.clickStyle').each(function(){
+                                        $(this).css('background','url(<{$baseURL}>2_interface_41.jpg)');
+                                    });
+                                    $("#canvas").remove();
+                                    $("#img_description").text("");
+                                    $("#openid").val("");
+                                    $("#qtag").val("0");
+                                    $("#uploadPreview").attr('src','');
+                                    timer = setInterval(startRequest,5000);
+                                    startRequest();
+                                }
+                                else{
+                                    alert("上传失败");
+                                    $( "#loading").empty().hide();
+                                    $(":button").removeAttr('disabled');
+                                }
+                            },
+                            error:function(){
+                                alert("上传失败");
+                                $( "#loading").empty().hide();
+                                $(":button").removeAttr('disabled');
+                            }
+
+                        })
+
+
+//		            $.post('/itf/postImg',{data:b64, r:imgRotateDeg,tagId:tagId },function(data){
+//		            if(data=="OK"){//上传成功
+//		            	$('.clickStyle').each(function(){
+//		                    $(this).css('background','url(<{$baseURL}>2_interface_41.jpg)');
+//		                });
+//		            	$("#canvas").remove();
+//		            	$("#img_description").text("");
+//						$("#openid").val("");
+//						$("#qtag").val("0");
+//						$("#uploadPreview").attr('src','');
+//						timer = setInterval(startRequest,5000);
+//					    startRequest();
+//		        	}
+//		        	else{
+//		        	    alert("上传失败");
+//		        	}
+//		       });
+                    }
+                }
+
+            });
+        })
+
+        function invalid(invalid_id){
+            if($("#"+invalid_id).attr('disabled') == 'disabled'){
+            }else{
+                $("#"+invalid_id).click();
+                a12();
+            }
+        }
+
+        function startRequest(){
+            var openid = $("#openid").val();
+            if(lock == 0){
+                lock = 1;
+                $.getJSON("/itf/getTask",function(data){
+                    if(data['task'].length!==0){
+                        json =data['task'];
+                        $("#openid").val(json.fid);
+                        $("#qtag").val("0");
+                        $("#wait").html(data.length+"个");
+                        if(json.img == ""){
+                            var text = "学霸君5.2的钛合金双眼也识别不出你发的问题，重新发一张试试吧";
+                            $.post("/itf/chatClose",{ text:text,operation:"0"},function(){
+                                $("#openid").val("");
+                                $("#qtag").val("0");
+                                $("#uploadPreview").attr('src','');
+                            });
+                        }else{
+                            clearInterval(timer);
+                            $("#img_description").text(json.text);
+                            var img = document.getElementById("uploadPreview");
+                            img.setAttribute('crossOrigin','anonymous');
+                            $("#uploadPreview").attr('src',json.img);
+                            createCanvasImg(img);
+                            loadImg(json.img);
+                            $(":button").removeAttr('disabled');
+                        }
+                    }
+                    lock = 0;
+                });
+            }
+        }
+        function getChatlist(){
+            var url="/itf/checkUser";
+            $.post(url,{user:"1"},function(data){
+                if(data==1){ //登录多个帐号
+                    alert("请不要同时登录多个账户！");
+                    window.location.href="/user";
+                }
+                if(data==2){ //被挤掉
+                    alert("您的账户已经在其他地方登录！");
+                    window.location.href="/user";
+                }
+            })
+            $.post("/itf/getListLen",function(data){
+                $("#wait").html(data+"个");
+            });
+            showTime();
+        }
+        function showPersonalInfo(){
+            var role=document.getElementById('role');
+            var name=document.getElementById('name');
+            var roleText=document.createTextNode("审核");
+            var nameText=document.createTextNode("<{$smarty.session.nick}>");
+            role.appendChild(roleText);
+            name.appendChild(nameText);
+        }
+        function showTime(){
+            var current=new Date();
+            var year=current.getUTCFullYear();
+            var month=current.getMonth()+1;
+            var monthChar='';
+            if(month==1){monthChar="Jan"};
+            if(month==2){monthChar="Feb"};
+            if(month==3){monthChar="Mar"};
+            if(month==4){monthChar="Apr"};
+            if(month==5){monthChar="May"};
+            if(month==6){monthChar="Jun"};
+            if(month==7){monthChar="July"};
+            if(month==8){monthChar="Aug"};
+            if(month==9){monthChar="Sep"};
+            if(month==10){monthChar="Doc"};
+            if(month==11){monthChar="Nov"};
+            if(month==12){monthChar="Dec"};
+            var day=current.getDate();
+            var hour=current.getHours();
+            var mOra="";
+            if(hour<12){mOra='AM'};
+            if(hour>=12){mOra='PM'};
+            var min=current.getMinutes();
+            document.getElementById('year').innerHTML=year;
+            document.getElementById('month').innerHTML=monthChar;
+            document.getElementById('day').innerHTML=day;
+            document.getElementById('hr').innerHTML=hour;
+            document.getElementById('min').innerHTML=min;
+            document.getElementById('aOrp').innerHTML=mOra;
+        }
+
+        function showKpi(){
+            var wait_num="";
+            var finish_num="";
+            var ave_num="";
+            document.getElementById("waitNum").appendChild(document.createTextNode(wait_num));
+            document.getElementById("finishNum").appendChild(document.createTextNode(finish_num));
+            document.getElementById("aveNum").appendChild(document.createTextNode(ave_num));
+        }
+
+
+        function loadImg(imgSrc){
+            var img = document.getElementById("uploadPreview");
+            img.setAttribute('crossOrigin','anonymous');
+            $('#uploadPreview').attr('src',imgSrc);
+            createCanvasImg(img);
+        }
+        //generate 1st Canvas ,2nd overlay Canvas and bind mousemoveEvent
+        var createCanvasImg=function(anImg){
+            anImg.loadOnce(function(){
+                AlloyImageObj = AlloyImage(this); // could direct load to canvas on performance enhancing purpose
+                AlloyImageObj.show("#div_canvas");
+                $("#div_canvas canvas").attr('id','canvas');//change canvasId
+                oImgWidth=this.width;
+                oImgHeight=this.height;
+                initHeight=oImgHeight;
+                initWidth=oImgWidth;
+                tempWidth=initWidth;
+                tempHeight=initHeight;
+                formatImgSize(900,450);
+                loadcanvasOverlay(oImgWidth,oImgHeight);
+                mouseMoveEvent();
+                imgRotateDeg=0;
+                imgRevised=0;
+                r=0;
+            })
+        }
+
+        var ctx1;//overlayCtx
+        function loadcanvasOverlay(width,height){//定义canvasOverlay size
+            var canvas=document.getElementById('canvasOverlay');
+            ctx1= canvas.getContext('2d');
+            canvas.width=width;
+            canvas.height=height;
+            ctx1.fillStyle="rgba(255,255,255,0)";
+            ctx1.fillRect(0,0,width,height);
+        }
+
+        function formatImgSize(maxWidth,maxHeight){
+            var canvas=$('#canvas');
+            //canvas.css('background','black');
+            var newHeight = initHeight;
+            if(initWidth>maxWidth){
+                canvas.height(maxWidth*initHeight/initWidth);
+                canvas.width(maxWidth);
+                oImgHeight=canvas.height();
+                oImgWidth=canvas.width();
+                newHeight = oImgHeight;
+            }
+            if(newHeight>maxHeight){
+                canvas.height(maxHeight);
+                canvas.width(maxHeight*initWidth/initHeight);
+                oImgWidth=canvas.width();
+                oImgHeight=canvas.height();
+            }
+            imageChangeRatio = initWidth/oImgWidth;
+        }
+
+        function a6(){ //rotate
+            imgRevised=0;
+            buttonId="rotate";
+            imgRotateDeg+=1;
+            if(imgRotateDeg==4){
+                imgRotateDeg=0;
+            }
+            if(imgRotateDeg%2!==0){
+                initWidth=tempHeight;
+                initHeight=tempWidth;
+                oImgWidth=initWidth;
+                oImgHeight=initHeight;
+            }
+            else{
+                initWidth=tempWidth;
+                initHeight=tempHeight;
+                oImgWidth=initWidth;
+                oImgHeight=initHeight;
+            }
+            $("#uploadPreview").rotate(90);
+            $("#continue").css('display','none');
+            $("#cancel").css('display','none');
+            $('#scaleSmall_btn').css('visibility','hidden');
+            $('#scaleBig_btn').css('visibility','hidden');
+        }
+
+        function reset(){
+            if($("#openid").val() != ""){
+                buttonId="reload";
+                $('#canvas').remove();
+                var img = document.getElementById("uploadPreview");
+                img.setAttribute('crossOrigin','anonymous');
+                AlloyImageObj = AlloyImage(img);
+                AlloyImageObj.show("#div_canvas");
+                $("#div_canvas canvas").attr('id','canvas');//change canvasId
+                initWidth=tempWidth;
+                initHeight=tempHeight;
+                oImgWidth=initWidth;
+                oImgHeight=initHeight;
+                formatImgSize(900,450);
+                loadcanvasOverlay(oImgWidth,oImgHeight);
+                mouseMoveEvent();
+                $("#continue").css('display','none');
+                $("#cancel").css('display','none');
+                down=0;                                         //!important
+                up=0;                                           //!important
+                valid=0;                                        //!important
+                ifLeave=0;                                      //!important
+                sizeChange=1;
+                imgRotateDeg=0;
+                imgRevised=0;
+                r=0;
+            }
+        }
+
+        function seeOriginPic(){
+            var imgSrc=$('#img_preview img').attr('src');
+            window.open(imgSrc);
+        }
+
+        function getX(obj){
+            var parObj=obj;
+            var left=obj.offsetLeft;
+            while(parObj=parObj.offsetParent){
+                left+=parObj.offsetLeft;
+            }
+            return left;
+        }
+
+        function getY(obj){
+            var parObj=obj;
+            var top=obj.offsetTop;
+            while(parObj = parObj.offsetParent){
+                top+=parObj.offsetTop;
+            }
+            return top;
+        }
+
+        var startX,startY,preX,preY,newStartX=0,newStartY=0;
+        var overlayCanvas;
+        var down=0;//判断鼠标mouseup mousedown
+        var up=0;//判断canvas是否有图像从而判断触发第二次mousedown，第二次mousemove
+        var valid=0;//第二次mousedown的时候判断移动点是否在画的区域内
+        var ifLeave=0;//判断鼠标是否移出canvas，从而触发body mousemove event
+
+        function clearData(){
+            down=0;
+            up=0;
+            valid=0;
+            ifLeave=0;
+            preX=startX;                                   //!important
+            preY=startY;                                   //!important
+        }
+
+        function mouseMoveEvent(){
+            overlayCanvas= new canvasOverlayHandler(oImgWidth,oImgHeight,'canvasOverlay');
+            var canvas=$('#canvasOverlay');
+            //var oDiv=document.getElementById("div_canvas");//计算canvas相对坐标
+            var oDiv=document.getElementById('canvasOverlay');
+            var top=getY(oDiv);
+            var left=getX(oDiv);
+
+            function getCurrent_x(e){
+                return e.clientX-left+document.body.scrollLeft;
+            }
+
+            function getCurrent_y(e){
+                return e.clientY-top+document.body.scrollTop;
+            }
+
+            canvas.bind('mousedown',function(e){
+                down=1;
+                //第2次mousedown
+                if(up==1){
+                    newStartX=getCurrent_x(e);
+                    newStartY=getCurrent_y(e);
+                    //点必须在画的方块内，才触发数据valid
+                    if(newStartX>=overlayCanvas.rectStartCoords.x && newStartX<=overlayCanvas.rectDesCoords.x &&
+                            newStartY>=overlayCanvas.rectStartCoords.y && newStartY<=overlayCanvas.rectDesCoords.y){
+                        valid=1;
+                    }
+                }
+
+                //第一次mousedown
+                else{
+                    startX=getCurrent_x(e);
+                    startY=getCurrent_y(e);
+                    preX=startX;
+                    preY=startY;
+                }
+            })
+
+
+            canvas.bind('mousemove',function(e){
+                if(down==1){
+                    if(up==1 && valid==1){//第二次移动
+                        overlayCanvas.clearRect();
+                        var x = getCurrent_x(e);
+                        var y = getCurrent_y(e);
+                        overlayCanvas.moveRect(newStartX,newStartY,x,y);
+                        newStartX=x;
+                        newStartY=y;
+                        changeBtnPosition();
+                    }
+                    if(up==0 && valid==0){//第一次移动
+                        var selectWidth=Math.abs(preX-startX);
+                        if(selectWidth!==0){
+                            overlayCanvas.clearRect();
+                        }
+                        var endX= getCurrent_x(e);
+                        var endY= getCurrent_y(e);
+                        overlayCanvas.getRectCoords(startX,startY,endX,endY);
+                        overlayCanvas.drawRect();
+                        preX=endX;
+                        preY=endY;
+                    }
+                }
+            })//end canvas mouse move
+
+            canvas.bind('mouseenter',function(){
+                ifLeave=0;
+            })
+            canvas.bind('mouseleave',function(){
+                ifLeave=1;
+            })
+
+            $('body').bind('mousemove',function(e){
+                var endX,endY;
+                e.preventDefault();
+                if(up==0 && valid==0 && down==1 && ifLeave==1){
+                    var selectWidth=Math.sqrt((preX-startX)*(preX-startX));
+                    if(selectWidth!==0){
+                        overlayCanvas.clearRect();
+                    }
+                    var outerendX=getCurrent_x(e);
+                    var outerendY=getCurrent_y(e);
+                    if(outerendX>oImgWidth){
+                        endX=oImgWidth;
+                        if(outerendY>oImgHeight){ //right down
+                            endY=oImgHeight;
+                        }
+                        if(outerendY<0){ // right Top
+                            endY=0;
+                        }
+                        if(outerendY>0 && outerendY<oImgHeight){ //right
+                            endY=outerendY;
+                        }
+                    }
+                    if(outerendX<0){
+                        endX=0;
+                        if(outerendY>oImgHeight){//left down
+                            endY=oImgHeight;
+                        }
+                        if(outerendY<0){//left top
+                            endY=0;
+                        }
+                        if(outerendY>0 && outerendY<oImgHeight){ //left
+                            endY=outerendY;
+                        }
+                    }
+                    if(outerendX>0 && outerendX<=oImgWidth){
+                        endX=outerendX;
+                        if(outerendY>oImgHeight){//down
+                            endY=oImgHeight;
+                        }
+                        if(outerendY<0){//top
+                            endY=0;
+                        }
+                    }
+                    overlayCanvas.getRectCoords(startX,startY,endX,endY);
+                    overlayCanvas.drawRect();
+                    preX=endX;
+                    preY=endY;
+                }
+            })
+
+            $('body').bind('mouseup',function(){
+                down=0;
+                valid=0;
+                var selectWidth=Math.abs(startX-preX);
+                if(selectWidth!==0 && typeof(startX)!=='undefined' && typeof(preX)!=='undefined'){
+                    up=1;
+                    $("#continue").css('display','block');
+                    $("#cancel").css('display','block');
+                    changeBtnPosition();
+//             $('#scaleSmall_btn').css('visibility','visible');
+//             $('#scaleBig_btn').css('visibility','visible');
+                }
+            })
+
+
+
+        }
+
+        function changeBtnPosition(){//剪裁和取消按钮出现在框选区域的下方
+            var rightBtmX=overlayCanvas.rectDesCoords.x;
+            var rightBtmY=overlayCanvas.rectDesCoords.y;
+            $('#continue').css('position','absolute').css('float','none').css('top',rightBtmY+40+'px').css('left',rightBtmX-40+'px').css('z-index','1');
+            $('#cancel').css('position','absolute').css('top',rightBtmY+40+'px').css('left',rightBtmX+5+'px').css('z-index','1');
+        }
+
+
+        function changeSelectWidth(difference){
+            if(difference>0){ //scale big
+                overlayCanvas.scaleBigRect(difference,0);
+            }
+            else{ //scale small
+                overlayCanvas.scaleSmallRect(-difference,0,20,10);
+            }
+            changeBtnPosition();
+        }
+
+        function changeSelectHeight(difference){
+            if(difference>0){ //scale big
+                overlayCanvas.scaleBigRect(0,difference);
+            }
+            else{ //scale small
+                overlayCanvas.scaleSmallRect(0,-difference,20,10);
+            }
+            changeBtnPosition();
+        }
+
+        function ifContinueOrNOT(){
+            if(buttonId=="confirm"){
+                overlayCanvas.clearRect();
+                $('#canvasOverlay').attr('width',overlayCanvas.rectWidth);
+                $('#canvasOverlay').attr('height',overlayCanvas.rectHeight);
+                oImgWidth=overlayCanvas.rectWidth;
+                oImgHeight=overlayCanvas.rectHeight;
+                var canvas=document.getElementById('canvas');
+                var ctx=canvas.getContext('2d');
+                var newSX=overlayCanvas.rectStartCoords.x*imageChangeRatio;
+                var newSY=overlayCanvas.rectStartCoords.y*imageChangeRatio;
+                var imgData=ctx.getImageData(newSX,newSY,overlayCanvas.rectWidth*imageChangeRatio,overlayCanvas.rectHeight*imageChangeRatio);
+                canvas.width=overlayCanvas.rectWidth*imageChangeRatio;
+                canvas.height=overlayCanvas.rectHeight*imageChangeRatio;//剪裁底下真实大小的canvas
+                ctx.putImageData(imgData,0,0);
+                $('#canvas').css('width',overlayCanvas.rectWidth+'px');
+                $('#canvas').css('height',overlayCanvas.rectHeight+'px');//css缩放剪裁后的canvas，使缩放比例保持consistent
+                imgRevised=1;
+                sizeChange=1;
+            }
+            if(buttonId=="cancel"){
+                overlayCanvas.clearRect();
+            }
+            clearData();
+            $("#continue").css('display','none');
+            $("#cancel").css('display','none');
+            $('#scaleSmall_btn').css('visibility','hidden');
+            $('#scaleBig_btn').css('visibility','hidden');
+        }
+        function a11(){   //continue
+            buttonId='confirm';
+            ifContinueOrNOT();
+        }
+        function a12(){  //cancel
+            buttonId='cancel';
+            ifContinueOrNOT();
+        }
+    </script>
+</head>
+
+<body>
+<div id="wrapper">
+    <{include file='user/common_tpl/left_nav.tpl'}>
+    <div id="right-panel">
+        <{include file='user/common_tpl/top_bar.tpl'}>
+        <{include file='user/common_tpl/info_bar.tpl' pageName='审核'}>
+
+        <div id="kpi_div">
+            <div class="kpi_group">
+                <img src="<{$baseURL}>no..jpg" class="kpi_img">
+                <span style="color:red">等待</span>
+                <span id="waitNum" ></span>
+                <span id="wait" ></span>&nbsp;&nbsp;
+                <input id="openid" type="text" disabled="disabled" style="width:300px;"   value="" >
+            </div>
+
+            <div class="kpi_group" style="display:none">
+                <img src="<{$baseURL}>no..jpg" class="kpi_img">
+                <span style="color:#9a9a9a">完成</span>
+                <span  id="finishNum" ></span>
+                <span >张</span>
+            </div>
+            <div class="kpi_group" style="display:none">
+                <img src="<{$baseURL}>no..jpg" class="kpi_img">
+                <span style="color:#9a9a9a">平均</span>
+                <span id="aveNum" ></span>
+                <span >秒</span>
+            </div>
+        </div>
+
+        <div id='main'>
+            <!--<div id='main_top'style="color:#676767;padding-left:10px;">
+                <span>审核题目：</span>
+            </div>
+            -->
+            <div id='main_btn'>
+                <div id="img_div_outer">
+                    <div id="reset_btn" onclick="reset()">重置</div>
+                    <div id="rotate_btn" onclick="a6()"></div>
+                    <div id="seeOriginPic" onclick="seeOriginPic()">查看原图</div>
+                    <div id="scaleSmall_btn" onclick="a9(10)" style="visibility:hidden;" ></div><!-- hide by default -->
+                    <div id="scaleBig_btn" onclick="a8(10)" style="visibility:hidden;"></div><!-- hide by default -->
+                    <div id="continue" style="float:left;display: none;"onclick="a11()"></div>
+                    <div id="cancel" style="display:none;" onclick="a12()"></div>
+                    <div class="clearfix"></div>
+                    <div id="div_canvas">
+                    </div>
+                    <canvas id="canvasOverlay" style="position:absolute;top:30px;left:0;"></canvas><!--overlay canvas -->
+                    <div id="img_preview" style="display:none">
+                        <img src="" style="float:left;" id="uploadPreview" />
+                    </div>
+                </div>
+
+                <span style="margin-top:20px;margin-left:920px;">题目描述：</span>
+                <div id="img_description"></div>
+                <input type="button" id="invalid_7" value="非标准题"  class="type" />
+                <input type="button" id="invalid_9" value="不可识别"  class="type"/>
+                <input type="button" id="invalid_6" value="开放性题"  class="type" />
+                <input type="button" id="invalid_8" value="其他 "  class="type"/>
+                <div id="invalid_7_div" title="多个问题或者题不完整" onclick="invalid('invalid_7');"></div>
+                <div id="invalid_9_div" title="图片太模糊或者手写题" onclick="invalid('invalid_9');"></div>
+                <div id="invalid_6_div" title="作文、翻译等开放性问题" onclick="invalid('invalid_6');"></div>
+                <div id="invalid_8_div" title="非题目、调戏学霸君、报告错误等各种情况" onclick="invalid('invalid_8');"></div>
+                <{******* start open dialog ***********}>
+                <div id="popDialog" title="this is the title" style="display:none;">
+                    <p>
+                        <input type="button" value="Button" name="Button" /><br>
+                        <input type="button" value="Button" name="Button" /><br>
+                        <input type="button" value="Button" name="Button" /><br>
+                        <input type="button" value="Button" name="Button" /><br>
+                    </p>
+                </div>
+                <{******* end open dialog ***********}>
+                <input type="button"  name='type' id="shuxue" value="数学" class="clickStyle" onclick="$('#qtag').val('2')" />
+                <input type="button"  name='type' id="wuli" value="物理"class="clickStyle" onclick="$('#qtag').val('4')"/>
+                <input type="button"  name='type' id="huaxue" value="化学"class="clickStyle" onclick="$('#qtag').val('5')" />
+                <input type="button"  name='type' id="yingyu" value="英语" class="clickStyle" onclick="$('#qtag').val('3')"/>
+                <input type="button"  name='type' id="yuwen" value="语文" class="clickStyle" onclick="$('#qtag').val('1')"/>
+                <input type="button"  name='type' id="shengwu" value="生物" class="clickStyle" onclick="$('#qtag').val('6')"/>
+                <input type="button"  name='type' id="zhengzhi" value="政治"class="clickStyle" onclick="$('#qtag').val('7')" />
+                <input type="button"  name='type' id="lishi" value="历史"class="clickStyle" onclick="$('#qtag').val('8')" />
+                <input type="button"  name='type' id="dili" value="地理" class="clickStyle" onclick="$('#qtag').val('9')" />
+                <input type="button"  name='type' id="other" value="其它" class="clickStyle" onclick="$('#qtag').val('10')"/>
+                <input type="button" id="solve" value=''/>
+            </div>
+        </div>
+        <div id="loading"></div>
+    </div>
+
+</div>
+<input id="qtag" type="text" disabled="disabled" style="width:300px;display:none"   value="" >
+
+</body>
+</html>
+
+
