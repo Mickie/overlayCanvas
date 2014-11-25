@@ -168,7 +168,7 @@
             $("#invalid_8").click(function(){
                 if(confirm("您已选择 '其他' 类型 ")){
                     $(":button").attr('disabled','disabled');
-                    var text = "童鞋~恭喜你获得加入学霸君QQ群的机会，我们一起来探讨作业的意义吧！QQ群号：170228454";
+                    var text = "";
                     $.post("/itf/chatClose",{ text:text,operation:"8"},function(){
                         $('.clickStyle').each(function(){
                             $(this).css('background','url(<{$baseURL}>2_interface_41.jpg)');
@@ -186,7 +186,7 @@
             $("#invalid_9").click(function(){
                 if(confirm("您已选择 '不可识别' 类型 ")){
                     $(":button").attr('disabled','disabled');
-                    var text = "童鞋~模糊的、手写的题目学霸君是无法识别的，请努力拍出好照片吧。";
+                    var text = "。";
                     $.post("/itf/chatClose",{ text:text,operation:"9"},function(){
                         $('.clickStyle').each(function(){
                             $(this).css('background','url(<{$baseURL}>2_interface_41.jpg)');
@@ -204,7 +204,7 @@
             $("#invalid_6").click(function(){
                 if(confirm("您已选择 '开放性题' 类型 ")){
                     $(":button").attr('disabled','disabled');
-                    var text = "童鞋~作文、翻译、论述神马的是思考的结晶哦~学霸君相信你可以做到的！";
+                    var text = "！";
                     $.post("/itf/chatClose",{ text:text,operation:"6"},function(){
                         $('.clickStyle').each(function(){
                             $(this).css('background','url(<{$baseURL}>2_interface_41.jpg)');
@@ -222,7 +222,7 @@
             $("#invalid_7").click(function(){
                 if(confirm("您已选择 '非标准' 类型 ")){
                     $(":button").attr('disabled','disabled');
-                    var text = "童鞋~学霸君一次只能搜索一道题目噢！友情提醒：拍完照后请框选出完整的题！";
+                    var text = "！";
                     $.post("/itf/chatClose",{ text:text,operation:"7"},function(){
                         $('.clickStyle').each(function(){
                             $(this).css('background','url(<{$baseURL}>2_interface_41.jpg)');
@@ -341,7 +341,7 @@
                         $("#qtag").val("0");
                         $("#wait").html(data.length+"个");
                         if(json.img == ""){
-                            var text = "学霸君5.2的钛合金双眼也识别不出你发的问题，重新发一张试试吧";
+                            var text = "";
                             $.post("/itf/chatClose",{ text:text,operation:"0"},function(){
                                 $("#openid").val("");
                                 $("#qtag").val("0");
@@ -849,7 +849,7 @@
                 <div id="invalid_7_div" title="多个问题或者题不完整" onclick="invalid('invalid_7');"></div>
                 <div id="invalid_9_div" title="图片太模糊或者手写题" onclick="invalid('invalid_9');"></div>
                 <div id="invalid_6_div" title="作文、翻译等开放性问题" onclick="invalid('invalid_6');"></div>
-                <div id="invalid_8_div" title="非题目、调戏学霸君、报告错误等各种情况" onclick="invalid('invalid_8');"></div>
+                <div id="invalid_8_div" title="况" onclick="invalid('invalid_8');"></div>
                 <{******* start open dialog ***********}>
                 <div id="popDialog" title="this is the title" style="display:none;">
                     <p>
